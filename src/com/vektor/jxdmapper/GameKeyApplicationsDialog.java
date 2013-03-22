@@ -1,5 +1,6 @@
 package com.vektor.jxdmapper;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
@@ -12,7 +13,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.text.Editable;
 import android.util.Log;
 import android.view.View;
@@ -41,6 +41,9 @@ import java.util.ArrayList;
 
 
 
+
+
+
 @SuppressWarnings("deprecation")
 public class GameKeyApplicationsDialog extends Dialog implements
 		OnClickListener, OnTouchListener, OnItemClickListener {
@@ -59,6 +62,7 @@ public class GameKeyApplicationsDialog extends Dialog implements
 	//private ImageButton button_down, button_left, button_right, button_up;
 	private ImageButton button_x, button_y, button_a, button_b;
 	private ImageButton button_r, button_r2, button_l, button_l2;
+	private ImageButton button_select,button_start,button_volup,button_voldn;
 	private Button btn_Able, btn_Disable, reset;
 	// private Button bt_modeswitch;
 	private int absoluteLayoutMove_xSpan, absoluteLayoutMove_ySpan;
@@ -82,15 +86,26 @@ public class GameKeyApplicationsDialog extends Dialog implements
 	private LinearLayout leftLayout,rightLayout,viewLayout;
 	private AlertDialog.Builder builder;
 	private AlertDialog.Builder builder2;
+	private Activity a;
+	private ResetListener mListener;
 	
-	public GameKeyApplicationsDialog(Context context) {
+	public GameKeyApplicationsDialog(Context context, Activity a) {
 		super(context,R.style.Theme_Translucent);
 		this.context = context;
 		final Resources resources = context.getResources();
+		this.a=a;
 		// mIconSize = (int)
 		// resources.getDimension(android.R.dimen.app_icon_size);
+		
+		try {
+            mListener = (ResetListener) a;
+        } catch (ClassCastException e) {
+            throw new ClassCastException(a.toString() + " must implement OnItemSelectedListener");
+        }
 	}
+	
 
+	
 	/**
 	 * We create the recent applications dialog just once, and it stays around
 	 * (hidden) until activated by the user.
@@ -160,6 +175,12 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		//button_down = (ImageButton) findViewById(R.id.fangxiang_down);
 		//button_left = (ImageButton) findViewById(R.id.fangxiang_left);
 		//button_right = (ImageButton) findViewById(R.id.fangxiang_right);
+		
+		button_select = (ImageButton) findViewById(R.id.btn_select);
+		button_start = (ImageButton) findViewById(R.id.btn_start);
+		button_volup = (ImageButton) findViewById(R.id.btn_volup);
+		button_voldn = (ImageButton) findViewById(R.id.btn_voldn);
+		
 
 		button_mode1 = (Button) findViewById(R.id.btn_mode1);
 		button_mode1.setSelected(true);
@@ -203,6 +224,11 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		button_r.setOnTouchListener(this);
 		button_l2.setOnTouchListener(this);
 		button_r2.setOnTouchListener(this);
+		
+		button_select.setOnTouchListener(this);
+		button_start.setOnTouchListener(this);
+		button_volup.setOnTouchListener(this);
+		button_voldn.setOnTouchListener(this);
 
 
 		btn_Able.setOnClickListener(this);
@@ -290,6 +316,10 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		case R.id.btn_r:
 		case R.id.btn_l2:
 		case R.id.btn_r2:
+		case R.id.btn_select:
+		case R.id.btn_start:
+		case R.id.btn_volup:
+		case R.id.btn_voldn:
 		case R.id.ib_analog_l:
 		case R.id.ib_analog_r:
 		case R.id.ib_analog_view:
@@ -401,6 +431,7 @@ public class GameKeyApplicationsDialog extends Dialog implements
 			FileSystemInterface.saveData(false, context);
 			dismiss();
 			goToHome();
+			//mListener.resetDialog();
 			break;
 
 		}
@@ -448,11 +479,10 @@ public class GameKeyApplicationsDialog extends Dialog implements
 			modeSwitch(1); 
 			moveView(ib_analog_view,Float.parseFloat(demon[21]),Float.parseFloat(demon[22]));
 			sensitivity_view.setProgress(Integer.parseInt(getCheckedVisual())-1);
-		}
+		} 
 		//if in mode 2..
 		if(demon[0].equals("2")){ 
 			modeSwitch(2);
-			SystemClock.sleep(500);
 			rightScale=(rightBitmap.getWidth()/2)/Float.parseFloat(demon[22]);
 			scale(ib_analog_r,rightBitmap,rightScale);
 			moveView(ib_analog_r,Float.parseFloat(demon[20]),Float.parseFloat(demon[21]));
@@ -585,5 +615,10 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		.setPositiveButton(context.getResources().getString(R.string.dialog_yes), dialogDeleteClickListener)
 		.setNegativeButton(context.getResources().getString(R.string.dialog_no), dialogDeleteClickListener).show();
 	}
+	
+	public interface ResetListener{
+		public void resetDialog();
+	}
+	
 
 }
