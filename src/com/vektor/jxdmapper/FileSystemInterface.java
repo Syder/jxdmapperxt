@@ -41,6 +41,7 @@ public class FileSystemInterface {
 	}
 	
 	public static boolean writeGamekeyValue(String content, Context ctx){
+		System.out.println("ATTEMPT TO WRITE "+content);
 		String fname = "gamekeyValue";
 		try {
 			FileOutputStream fo = ctx.openFileOutput(fname, Context.MODE_PRIVATE);
@@ -117,7 +118,7 @@ public class FileSystemInterface {
 		}
 		if (boolean1 == false) {
 			if (file.exists()) {
-				file.delete();
+				//file.delete();
 			}
 		}
 	}

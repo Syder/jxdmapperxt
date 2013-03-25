@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -15,9 +14,9 @@ import android.graphics.Matrix;
 import android.os.Bundle;
 import android.text.Editable;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.MeasureSpec;
-import android.view.ViewGroup.LayoutParams;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.View.OnClickListener;
@@ -26,8 +25,10 @@ import android.view.MotionEvent;
 import android.view.ViewGroup;
 import android.view.View.OnTouchListener;
 import android.widget.AbsoluteLayout;
+import android.widget.Adapter;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -35,6 +36,7 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SeekBar;
+import android.widget.Spinner;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -46,7 +48,7 @@ import java.util.ArrayList;
 
 @SuppressWarnings("deprecation")
 public class GameKeyApplicationsDialog extends Dialog implements
-		OnClickListener, OnTouchListener, OnItemClickListener {
+		OnClickListener, OnTouchListener, OnItemClickListener, Dialog.OnKeyListener, OnItemSelectedListener {
 	
 	// Elements for debugging support
 	// private static final String LOG_TAG = "GameKeyApplicationsDialog";
@@ -64,14 +66,13 @@ public class GameKeyApplicationsDialog extends Dialog implements
 	private ImageButton button_r, button_r2, button_l, button_l2;
 	private ImageButton button_select,button_start,button_volup,button_voldn;
 	private Button btn_Able, btn_Disable, reset;
-	// private Button bt_modeswitch;
 	private int absoluteLayoutMove_xSpan, absoluteLayoutMove_ySpan;
 	private int  absoluteLayoutMove_afterX = 0;
 	private int  absoluteLayoutMove_afterY = 0;
 	AbsoluteLayout absoluteLayoutMove;
 	Configuration configScreen;
 	private int mode=1;
-	private Button button_mode1, button_mode2;
+	
 	private Button button_left_bigger, button_left_smaller;
 	private Button button_right_bigger, button_right_smaller;
 	private ImageButton ib_analog_l, ib_analog_r, ib_analog_view;
@@ -81,30 +82,43 @@ public class GameKeyApplicationsDialog extends Dialog implements
 	private Button button_profile_del, button_profile_load,button_profile_new;
 	private ListView profile_list;
 	private String selectedProfile = "";
+	
+	private Spinner mode_switch, lstick_mode, rstick_mode;
+	
+	private int leftstickmode = 2;
+	private int rightstickmode = 1;
+	
 	LinearLayout zoom;
 	//-xin-add
-	private LinearLayout leftLayout,rightLayout,viewLayout;
+	private LinearLayout leftLayout,rightAnalogLayout,rightViewLayout,profileLayout,leftAnalogLayout;
+	private ImageButton collapseButton;
+	private ImageButton lpadup,lpaddn,lpadleft,lpadright;
+	private ImageButton rpadup,rpaddn,rpadleft,rpadright;
+	
+	
 	private AlertDialog.Builder builder;
 	private AlertDialog.Builder builder2;
 	private Activity a;
-	private ResetListener mListener;
 	
 	public GameKeyApplicationsDialog(Context context, Activity a) {
 		super(context,R.style.Theme_Translucent);
 		this.context = context;
-		final Resources resources = context.getResources();
 		this.a=a;
 		// mIconSize = (int)
 		// resources.getDimension(android.R.dimen.app_icon_size);
 		
 		try {
-            mListener = (ResetListener) a;
         } catch (ClassCastException e) {
             throw new ClassCastException(a.toString() + " must implement OnItemSelectedListener");
         }
 	}
 	
-
+	private void resume(){
+		String ps = FileSystemInterface.readGameKeyValue(context);
+		if(ps!=null){
+			this.setButtonPositions(ps);
+		}
+	}
 	
 	/**
 	 * We create the recent applications dialog just once, and it stays around
@@ -119,12 +133,12 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		Context context = getContext();
 		
 		Window window = getWindow();
-		//window.requestFeature(Window.FEATURE_NO_TITLE);
+		window.requestFeature(Window.FEATURE_NO_TITLE);
 		//window.setType(WindowManager.LayoutParams.TYPE_SYSTEM_DIALOG);
-		//window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-		//		WindowManager.LayoutParams.FLAG_FULLSCREEN);
+		window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+				WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		//window.setTitle("Recents");
-
+		this.setOnKeyListener(this);
 		
 		setContentView(R.layout.gamekey_dialog);
 
@@ -145,7 +159,10 @@ public class GameKeyApplicationsDialog extends Dialog implements
 				R.drawable.button_analog_r);
 		ib_analog_l.setImageBitmap(leftBitmap);
 		ib_analog_r.setImageBitmap(rightBitmap);
-		
+		modeSpinnerPopulate();
+		lstickModeSpinnerPopulate();
+		rstickModeSpinnerPopulate();
+		collapseButton.setBackgroundResource(android.R.drawable.ic_media_previous);
 		modeSwitch(mode);
 		
 		
@@ -182,20 +199,16 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		button_voldn = (ImageButton) findViewById(R.id.btn_voldn);
 		
 
-		button_mode1 = (Button) findViewById(R.id.btn_mode1);
-		button_mode1.setSelected(true);
-		button_mode2 = (Button) findViewById(R.id.btn_mode2);
 		button_left_bigger = (Button) findViewById(R.id.bt_left_bigger);
 		button_left_smaller = (Button) findViewById(R.id.bt_left_smaller);
 		button_right_bigger = (Button) findViewById(R.id.bt_right_bigger);
 		button_right_smaller = (Button) findViewById(R.id.bt_right_smaller);
-
 		absoluteLayoutMove = (AbsoluteLayout) findViewById(R.id.absoluteLayoutMove);
 		sensitivity_view=(SeekBar) findViewById(R.id.sensitivity);
 		
-		rightLayout=(LinearLayout) findViewById(R.id.rocker_right);
-		viewLayout=(LinearLayout) findViewById(R.id.rocker_view);
-		leftLayout=(LinearLayout) findViewById(R.id.rocker_left);
+		rightViewLayout=(LinearLayout) findViewById(R.id.right_view);
+		rightAnalogLayout=(LinearLayout) findViewById(R.id.right_analog);
+		//leftLayout=(LinearLayout) findViewById(R.id.rocker_left);
 		
 
 		button_profile_del = (Button) findViewById(R.id.bt_profile_del);
@@ -204,7 +217,24 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		
 		profile_list = (ListView) findViewById(R.id.listProfile);
 		
-
+		mode_switch = (Spinner) findViewById(R.id.mode_switch);
+		rstick_mode = (Spinner) findViewById(R.id.rstickmode);
+		lstick_mode = (Spinner) findViewById(R.id.lstickmode);
+		
+		profileLayout = (LinearLayout) findViewById(R.id.layout_profiles);
+		collapseButton = (ImageButton) findViewById(R.id.collapse_button);
+		
+		leftAnalogLayout = (LinearLayout) findViewById(R.id.left_analog);
+		
+		lpadup = (ImageButton) findViewById(R.id.button_lpad_up);
+		lpaddn = (ImageButton) findViewById(R.id.button_lpad_down);
+		lpadleft = (ImageButton) findViewById(R.id.button_lpad_left);
+		lpadright = (ImageButton) findViewById(R.id.button_lpad_right);
+		rpadup = (ImageButton) findViewById(R.id.button_rpad_up);
+		rpaddn = (ImageButton) findViewById(R.id.button_rpad_down);
+		rpadleft = (ImageButton) findViewById(R.id.button_rpad_left);
+		rpadright = (ImageButton) findViewById(R.id.button_rpad_right);
+		
 	}
 	
 	public void listPopulate(){
@@ -214,6 +244,27 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		R.layout.row, R.id.profileName, lst); 
 		profile_list.setAdapter(adapter);
 	}
+	
+	public void modeSpinnerPopulate(){
+		String[] modes ={"Right View","Right Analog","Enhanced"};
+		ArrayAdapter<String> mode_adapter = new ArrayAdapter<String>(context, R.layout.row, R.id.profileName, modes);
+		mode_switch.setAdapter(mode_adapter);
+		mode_switch.setSelection(0);
+	}
+	
+	public void lstickModeSpinnerPopulate(){
+		String[] modes={"Analog","Split"};
+		ArrayAdapter<String> lstick_adapter = new ArrayAdapter<String>(context, R.layout.row, R.id.profileName, modes);
+		lstick_mode.setAdapter(lstick_adapter);
+		lstick_mode.setSelection(0);
+	}
+	public void rstickModeSpinnerPopulate(){
+		String[] modes={"View","Analog","Split"};
+		ArrayAdapter<String> rstick_adapter = new ArrayAdapter<String>(context, R.layout.row, R.id.profileName, modes);
+		rstick_mode.setAdapter(rstick_adapter);
+		rstick_mode.setSelection(0);
+	}
+	
 	
 	public void buttonListener() {
 		button_x.setOnTouchListener(this);
@@ -234,8 +285,6 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		btn_Able.setOnClickListener(this);
 		btn_Disable.setOnClickListener(this);
 		reset.setOnClickListener(this);
-		button_mode1.setOnClickListener(this);
-		button_mode2.setOnClickListener(this);
 
 		ib_analog_l.setOnTouchListener(this);
 		ib_analog_r.setOnTouchListener(this);
@@ -251,8 +300,24 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		button_profile_del.setOnClickListener(this);
 		button_profile_load.setOnClickListener(this);
 		button_profile_new.setOnClickListener(this);
+		collapseButton.setOnClickListener(this);
 		
 		profile_list.setOnItemClickListener(this);
+		
+		mode_switch.setOnItemSelectedListener(this);
+		
+		rstick_mode.setOnItemSelectedListener(this);
+		lstick_mode.setOnItemSelectedListener(this);
+		
+		lpadup.setOnTouchListener(this);
+		lpaddn.setOnTouchListener(this);
+		lpadleft.setOnTouchListener(this);
+		lpadright.setOnTouchListener(this);
+		rpadup.setOnTouchListener(this);
+		rpaddn.setOnTouchListener(this);
+		rpadleft.setOnTouchListener(this);
+		rpadright.setOnTouchListener(this);
+		
 		
 
 	}
@@ -260,29 +325,60 @@ public class GameKeyApplicationsDialog extends Dialog implements
 	private void modeSwitch(int m){
 		switch(m){
 		case 1:
-			button_mode1.setSelected(true);
-			button_mode2.setSelected(false);
-			button_mode1.setTextColor(Color.GREEN);
-			button_mode2.setTextColor(Color.WHITE);
-			
 			ib_analog_view.setVisibility(View.VISIBLE);
 			ib_analog_r.setVisibility(View.GONE);
-			leftLayout.setVisibility(View.VISIBLE);
-			rightLayout.setVisibility(View.GONE);
-			viewLayout.setVisibility(View.VISIBLE);
+			ib_analog_l.setVisibility(View.VISIBLE);
+			leftAnalogLayout.setVisibility(View.VISIBLE);
+			rightAnalogLayout.setVisibility(View.GONE);
+			rightViewLayout.setVisibility(View.VISIBLE);
+			button_start.setVisibility(View.GONE);
+			button_select.setVisibility(View.GONE);
+			button_volup.setVisibility(View.GONE);
+			button_voldn.setVisibility(View.GONE);
+			rstick_mode.setVisibility(View.GONE);
+			lstick_mode.setVisibility(View.GONE);
+			rpadup.setVisibility(View.GONE);
+			rpaddn.setVisibility(View.GONE);
+			rpadleft.setVisibility(View.GONE);
+			rpadright.setVisibility(View.GONE);
+			lpadup.setVisibility(View.GONE);
+			lpaddn.setVisibility(View.GONE);
+			lpadleft.setVisibility(View.GONE);
+			lpadright.setVisibility(View.GONE);
 			mode=1;
 			break;
 		case 2:
-			button_mode1.setSelected(false);
-			button_mode2.setSelected(true);
-			button_mode1.setTextColor(Color.WHITE);
-			button_mode2.setTextColor(Color.GREEN);
 			ib_analog_view.setVisibility(View.GONE);
 			ib_analog_r.setVisibility(View.VISIBLE);
-			leftLayout.setVisibility(View.VISIBLE);
-			rightLayout.setVisibility(View.VISIBLE);
-			viewLayout.setVisibility(View.GONE);
+			ib_analog_l.setVisibility(View.VISIBLE);
+			leftAnalogLayout.setVisibility(View.VISIBLE);
+			rightAnalogLayout.setVisibility(View.VISIBLE);
+			rightViewLayout.setVisibility(View.GONE);
+			button_start.setVisibility(View.GONE);
+			button_select.setVisibility(View.GONE);
+			button_volup.setVisibility(View.GONE);
+			button_voldn.setVisibility(View.GONE);
+			rstick_mode.setVisibility(View.GONE);
+			lstick_mode.setVisibility(View.GONE);
+			rpadup.setVisibility(View.GONE);
+			rpaddn.setVisibility(View.GONE);
+			rpadleft.setVisibility(View.GONE);
+			rpadright.setVisibility(View.GONE);
+			lpadup.setVisibility(View.GONE);
+			lpaddn.setVisibility(View.GONE);
+			lpadleft.setVisibility(View.GONE);
+			lpadright.setVisibility(View.GONE);
 			mode=2;
+			break;
+		case 3: 
+			button_start.setVisibility(View.VISIBLE);
+			button_select.setVisibility(View.VISIBLE);
+			button_volup.setVisibility(View.VISIBLE);
+			button_voldn.setVisibility(View.VISIBLE);
+			rstick_mode.setVisibility(View.VISIBLE);
+			lstick_mode.setVisibility(View.VISIBLE);
+			mode=3;
+			mode3switch(leftstickmode,rightstickmode);
 			break;
 		default: return;
 		}
@@ -323,6 +419,14 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		case R.id.ib_analog_l:
 		case R.id.ib_analog_r:
 		case R.id.ib_analog_view:
+		case R.id.button_lpad_down:
+		case R.id.button_lpad_left:
+		case R.id.button_lpad_right:
+		case R.id.button_lpad_up:
+		case R.id.button_rpad_down:
+		case R.id.button_rpad_left:
+		case R.id.button_rpad_right:
+		case R.id.button_rpad_up:
 			if (event.getAction() == MotionEvent.ACTION_MOVE){
 				moveView(v, event.getRawX(), event.getRawY());
 			}
@@ -352,8 +456,12 @@ public class GameKeyApplicationsDialog extends Dialog implements
 
 	@Override
 	public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
-		final String selected = arg0.getItemAtPosition(arg2).toString();
-		selectedProfile=selected;
+		switch(arg0.getId()){
+		case R.id.listProfile:
+			final String selected = arg0.getItemAtPosition(arg2).toString();
+			selectedProfile=selected;
+			break;
+		}
 
 	}
 	
@@ -371,13 +479,6 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		
 		case R.id.bt_profile_new:
 			saveDialog();
-			break;
-		
-		case R.id.btn_mode1:
-			modeSwitch(1);
-			break;
-		case R.id.btn_mode2:
-			modeSwitch(2);
 			break;
 		case R.id.btn_Able:
 			String analogValue=createDemonString();
@@ -401,6 +502,16 @@ public class GameKeyApplicationsDialog extends Dialog implements
 			dismiss();
 			goToHome();
 			break;
+		case R.id.collapse_button:
+			if(profileLayout.getVisibility() == View.VISIBLE){
+				absoluteLayoutMove.setLayoutParams(new AbsoluteLayout.LayoutParams(260, absoluteLayoutMove.getHeight(), (int)absoluteLayoutMove.getX(), (int)absoluteLayoutMove.getY()));
+				profileLayout.setVisibility(View.GONE);
+				collapseButton.setBackgroundResource(android.R.drawable.ic_media_next);
+			} else {
+				absoluteLayoutMove.setLayoutParams(new AbsoluteLayout.LayoutParams(440, absoluteLayoutMove.getHeight(), (int)absoluteLayoutMove.getX(), (int)absoluteLayoutMove.getY()));
+				profileLayout.setVisibility(View.VISIBLE);
+				collapseButton.setBackgroundResource(android.R.drawable.ic_media_previous);
+			} break;
 		case R.id.bt_left_bigger:
 			leftScale=leftScale+0.1;
 			if(leftScale<0.5)leftScale=0.5;
@@ -427,6 +538,7 @@ public class GameKeyApplicationsDialog extends Dialog implements
 			break;
 		case R.id.reset:
 			FileSystemInterface.writeGamekeyValue("0", context);
+			System.out.println("EI");
 			ShInterface.keyEnable(context);
 			FileSystemInterface.saveData(false, context);
 			dismiss();
@@ -495,12 +607,12 @@ public class GameKeyApplicationsDialog extends Dialog implements
 	private String createDemonString(){
 		final String split=" ";
 		StringBuilder sb=new StringBuilder();
-		if(mode==1){
-			sb.append("1"+split);
-		}else{
-			sb.append("2 "+split);
-		}
 		int[] location=new int[2];
+		if(mode == 1 || mode == 2){
+		
+		sb.append(mode+split);
+		
+		
 		getViewCenter(ib_analog_l,location);
 		sb.append(location[0]+split+location[1]+split);
 		sb.append(ib_analog_l.getWidth()/2+split);
@@ -527,7 +639,83 @@ public class GameKeyApplicationsDialog extends Dialog implements
 		}else{
 			getViewCenter(ib_analog_r,location);
 			sb.append(location[0]+split+location[1]+split);
-			sb.append(ib_analog_r.getWidth()/2);
+			sb.append(ib_analog_r.getWidth()/2+split);
+		}
+		sb.append("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0");
+		}
+		
+		else if(mode == 3){
+			sb.append(mode+split);
+			if(leftstickmode == 2){
+				getViewCenter(ib_analog_l,location);
+				sb.append(location[0]+split+location[1]+split);
+				sb.append(ib_analog_l.getWidth()/2+split);
+			}
+			else sb.append("0 0 0 ");
+			getViewCenter(button_a,location);
+			sb.append(location[0]+split+location[1]+split);
+			getViewCenter(button_b,location);
+			sb.append(location[0]+split+location[1]+split);
+			getViewCenter(button_x,location);
+			sb.append(location[0]+split+location[1]+split);
+			getViewCenter(button_y,location);
+			sb.append(location[0]+split+location[1]+split);
+			getViewCenter(button_l,location);
+			sb.append(location[0]+split+location[1]+split);
+			getViewCenter(button_r,location);
+			sb.append(location[0]+split+location[1]+split);
+			getViewCenter(button_l2,location);
+			sb.append(location[0]+split+location[1]+split);
+			getViewCenter(button_r2,location);
+			sb.append(location[0]+split+location[1]+split);
+			if(rightstickmode==1){
+				sb.append(getCheckedVisual()+split);
+				getViewCenter(ib_analog_view,location);
+				sb.append(location[0]+split+location[1]+split);
+			}else if (rightstickmode == 2){
+				getViewCenter(ib_analog_r,location);
+				sb.append(location[0]+split+location[1]+split);
+				sb.append(ib_analog_r.getWidth()/2+split);
+			}
+			else sb.append("0 0 0 ");
+			getViewCenter(button_start,location);
+			sb.append(location[0]+split+location[1]+split);
+			getViewCenter(button_select,location);
+			sb.append(location[0]+split+location[1]+split);
+			getViewCenter(button_volup,location);
+			sb.append(location[0]+split+location[1]+split);
+			getViewCenter(button_voldn,location);
+			sb.append(location[0]+split+location[1]+split);
+			sb.append(leftstickmode+split);
+			sb.append(rightstickmode+split);
+			if(leftstickmode==3){
+				getViewCenter(lpadup,location);
+				sb.append(location[0]+split+location[1]+split);
+				getViewCenter(lpadleft,location);
+				sb.append(location[0]+split+location[1]+split);
+				getViewCenter(lpaddn,location);
+				sb.append(location[0]+split+location[1]+split);
+				getViewCenter(lpadright,location);
+				sb.append(location[0]+split+location[1]+split);
+			}
+			else sb.append("0 0 0 0 0 0 0 0 ");
+			if(rightstickmode==3){
+				getViewCenter(rpadup,location);
+				sb.append(location[0]+split+location[1]+split);
+				getViewCenter(rpadleft,location);
+				sb.append(location[0]+split+location[1]+split);
+				getViewCenter(rpaddn,location);
+				sb.append(location[0]+split+location[1]+split);
+				getViewCenter(rpadright,location);
+				sb.append(location[0]+split+location[1]);
+			}
+			else sb.append("0 0 0 0 0 0 0 0");
+		}
+		
+		System.out.println(sb.toString());
+		String []param = sb.toString().split("\\s+");
+		for (int i = 0; i<param.length;i++){
+			System.out.println("Param["+i+"]="+param[i]);
 		}
 		return sb.toString();
 	}
@@ -561,10 +749,13 @@ public class GameKeyApplicationsDialog extends Dialog implements
 	}
 
 	private void goToHome(){
+		
 		Intent homeIntent= new Intent(Intent.ACTION_MAIN);
 		homeIntent.addCategory(Intent.CATEGORY_HOME);
 		homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		context.startActivity(homeIntent);
+		
+		
 	}
 	
 	DialogInterface.OnClickListener dialogDeleteClickListener = new DialogInterface.OnClickListener() {
@@ -619,6 +810,99 @@ public class GameKeyApplicationsDialog extends Dialog implements
 	public interface ResetListener{
 		public void resetDialog();
 	}
-	
 
+	@Override
+	public boolean onKey(DialogInterface arg0, int keyCode, KeyEvent arg2) {
+		// TODO Auto-generated method stub
+		if (keyCode == KeyEvent.KEYCODE_BACK) {}
+		//else if(keyCode == KeyEvent.KEYCODE_HOME) {a.onKeyDown(KeyEvent.KEYCODE_HOME, arg2);}
+        return true;
+	}
+
+	@Override
+	public void onItemSelected(AdapterView<?> arg0, View arg1, int arg2,
+			long arg3) {
+		switch(arg0.getId()){
+		case R.id.mode_switch:
+				modeSwitch(arg2+1);
+				break;
+		case R.id.rstickmode:
+				rightstickmode = arg2+1;
+				mode3switch(leftstickmode,rightstickmode);
+				break;
+		case R.id.lstickmode:
+				leftstickmode = arg2+2;
+				mode3switch(leftstickmode,rightstickmode);
+				break;
+		default: break;
+		}
+			
+			
+		// TODO Auto-generated method stub
+		
+	}
+
+	private void mode3switch(int leftstickmode2, int rightstickmode2) {
+		
+		switch(leftstickmode2){
+		case 1:
+		case 2:
+			ib_analog_l.setVisibility(View.VISIBLE);
+			leftAnalogLayout.setVisibility(View.VISIBLE);
+			lpadup.setVisibility(View.GONE);
+			lpaddn.setVisibility(View.GONE);
+			lpadleft.setVisibility(View.GONE);
+			lpadright.setVisibility(View.GONE);
+			break;
+		case 3:
+			leftAnalogLayout.setVisibility(View.GONE);
+			ib_analog_l.setVisibility(View.GONE);
+			lpadup.setVisibility(View.VISIBLE);
+			lpaddn.setVisibility(View.VISIBLE);
+			lpadleft.setVisibility(View.VISIBLE);
+			lpadright.setVisibility(View.VISIBLE);
+			break;
+		default: return;
+		}
+		switch(rightstickmode2){
+		case 1:
+			ib_analog_view.setVisibility(View.VISIBLE);
+			ib_analog_r.setVisibility(View.GONE);
+			sensitivity_view.setVisibility(View.VISIBLE);
+			rightAnalogLayout.setVisibility(View.GONE);
+			rpadup.setVisibility(View.GONE);
+			rpaddn.setVisibility(View.GONE);
+			rpadleft.setVisibility(View.GONE);
+			rpadright.setVisibility(View.GONE);
+			break;
+		case 2:
+			ib_analog_r.setVisibility(View.VISIBLE);
+			ib_analog_view.setVisibility(View.GONE);
+			sensitivity_view.setVisibility(View.GONE);
+			rightAnalogLayout.setVisibility(View.VISIBLE);
+			rpadup.setVisibility(View.GONE);
+			rpaddn.setVisibility(View.GONE);
+			rpadleft.setVisibility(View.GONE);
+			rpadright.setVisibility(View.GONE);
+			break;
+		case 3:
+			ib_analog_r.setVisibility(View.GONE);
+			ib_analog_view.setVisibility(View.GONE);
+			sensitivity_view.setVisibility(View.GONE);
+			rightAnalogLayout.setVisibility(View.GONE);
+			rpadup.setVisibility(View.VISIBLE);
+			rpaddn.setVisibility(View.VISIBLE);
+			rpadleft.setVisibility(View.VISIBLE);
+			rpadright.setVisibility(View.VISIBLE);
+			break;
+		default: return;
+		}
+	}
+
+	@Override
+	public void onNothingSelected(AdapterView<?> arg0) {
+		// TODO Auto-generated method stub
+		
+	}
+	
 }

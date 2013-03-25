@@ -19,12 +19,13 @@
 	<style name="TransparentTheme" parent="@android:style/Theme.Translucent.NoTitleBar.Fullscreen"/>
 	<style name="HoloDialog" parent="@android:style/Theme.Holo.Dialog"/>
 	<style name="Theme.Light.NoTitleBar" parent="android:style/Theme.Holo.Light.NoActionBar"/>
-    <style name="Theme.Translucent" parent="android:style/Theme.Holo.NoActionBar">
+    <style name="Theme.Translucent" parent="android:style/Theme.Holo">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowAnimationStyle">@android:style/Animation.Translucent</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:colorForeground">#fff</item>
+        <item name="android:textColor">#ffffffff</item>
     </style>
 	
 </resources>
