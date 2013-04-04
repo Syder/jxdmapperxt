@@ -1,11 +1,16 @@
 package com.vektor.jxdmapper;
 
+import java.io.File;
+import java.io.OutputStream;
+
 import com.vektor.jxdmapper.GameKeyApplicationsDialog.ResetListener;
 
 import android.os.Bundle;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.View;
@@ -15,11 +20,15 @@ public class MainActivity extends Activity implements ResetListener {
 	GameKeyApplicationsDialog gkad = null;
 	View v = null;
 	Activity a = this;
+	@SuppressWarnings("deprecation")
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_main);
 		v = getWindow().getDecorView().findViewById(android.R.id.content);
+		
+		//FileSystemInterface.saveScreenshot(bitmap, v.getContext());
+		setContentView(R.layout.activity_main);
+		
 		gkad = new GameKeyApplicationsDialog(v.getContext(),a);
 		
 		if(!gkad.isShowing()){

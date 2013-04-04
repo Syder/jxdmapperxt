@@ -22,9 +22,10 @@
     <string name="rocker_left">Left Joystick</string>
     <string name="rocker_right">Right Joystick</string>
     
-    <string name="profile_new">Save New</string>
+    <string name="profile_new">New</string>
     <string name="profile_del">Delete</string>
     <string name="profile_load">Load</string>
+    <string name="profile_save">Save</string>
     <string name="delete_message">Do you really want to delete this profile?</string>
     <string name="dialog_yes">Yes</string>
     <string name="dialog_no">No</string>

@@ -6,6 +6,7 @@ import java.util.List;
 
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Environment;
 import android.view.View;
@@ -41,11 +42,27 @@ public class FileSystemInterface {
 	}
 	
 	public static boolean writeGamekeyValue(String content, Context ctx){
-		System.out.println("ATTEMPT TO WRITE "+content);
 		String fname = "gamekeyValue";
 		try {
 			FileOutputStream fo = ctx.openFileOutput(fname, Context.MODE_PRIVATE);
 			fo.write(content.getBytes());
+			fo.close();
+			return true;
+		} catch (FileNotFoundException e) {
+			
+			e.printStackTrace();
+		} catch (IOException e) {
+			
+			e.printStackTrace();
+		}
+		return false;
+	}
+	public static boolean saveScreenshot(Bitmap bmp, Context ctx){
+		String fname = "ss.jpg";
+		try {
+			FileOutputStream fo = ctx.openFileOutput(fname, Context.MODE_PRIVATE);
+			bmp.compress(Bitmap.CompressFormat.JPEG, 90, fo);
+		    fo.flush();
 			fo.close();
 			return true;
 		} catch (FileNotFoundException e) {
